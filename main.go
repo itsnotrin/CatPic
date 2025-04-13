@@ -62,9 +62,15 @@ func main() {
 		// Set content disposition for downloads
 		c.Set("Content-Disposition", "inline; filename="+filename)
 
-		// Set headers for embeds in social platforms
+		// Prevent caching by clients and proxies (like Cloudflare)
+		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+		c.Set("Pragma", "no-cache")
+		c.Set("Expires", "0")
+		c.Set("Surrogate-Control", "no-store")
+
+		// Set headers for embeds in social platforms with a cache-busting query
 		c.Set("Content-Type", getContentType(imagePath))
-		c.Set("og:image", c.BaseURL()+"/"+filename)
+		c.Set("og:image", c.BaseURL()+"/?filename="+filename+"&t="+time.Now().Format("20060102150405"))
 		c.Set("og:title", filename)
 		c.Set("og:description", "Random image: "+filename)
 
