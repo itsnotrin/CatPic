@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	imageDir = "/mnt/nas/"
+	imageDir = "/mnt/All Disks/Files/cats"
 )
 
 func main() {
