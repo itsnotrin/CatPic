@@ -36,9 +36,8 @@ func main() {
 		filename := filepath.Base(imagePath)
 		imageURL := c.BaseURL() + "/image/" + filename + "?t=" + strconv.FormatInt(time.Now().Unix(), 10)
 
-		// Fetch user settings (simulated via JS in the frontend)
 		html := fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8">
   <meta property="og:title" content="Random Cat!" />
@@ -46,87 +45,11 @@ func main() {
   <meta property="og:image" content="%s" />
   <meta property="twitter:card" content="summary_large_image" />
   <title>Random Cat</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      padding: 2rem;
-      margin: 0;
-    }
-    .card {
-      background: #1e1e1e;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-      padding: 1rem;
-      max-width: 400px;
-      text-align: center;
-      border: 1px solid #333;
-    }
-    .card img {
-      max-width: 100%%;
-      border-radius: 8px;
-    }
-    .button {
-      margin-top: 1rem;
-      background: #6366f1;
-      color: white;
-      padding: 0.6rem 1.2rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
-      transition: background 0.2s ease;
-    }
-    .button:hover {
-      background: #4f46e5;
-    }
-  </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Random Cat 🐱</h2>
-    <img src="%s" alt="A random cat" />
-    <form method="GET" action="/">
-      <button class="button">New Cat</button>
-    </form>
-  </div>
-
-  <script>
-    // Get user preferences from localStorage
-    const confettiEnabled = localStorage.getItem("confetti") === "true";
-    const keyboardShortcutsEnabled = localStorage.getItem("keyboardShortcuts") === "true";
-    const darkModeEnabled = localStorage.getItem("darkMode") === "true";
-
-    if (confettiEnabled) {
-    	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-
-      if (confettiEnabled) {
-        confetti({ particleCount: 100, spread: 70, origin: { x: 0.5, y: 0.5 } });
-      }
-    </script>
-    }
-
-    if (keyboardShortcutsEnabled) {
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'n' || e.key === 'N') {
-          location.reload(); // Load a new cat on 'n' key press
-        }
-      });
-    }
-
-    // Toggle Dark Mode
-    if (!darkModeEnabled) {
-      document.body.style.backgroundColor = '#f7f7f7';
-      document.body.style.color = '#333';
-      document.querySelector('.card').style.backgroundColor = '#ffffff';
-    }
-  </script>
+  <h1>Random Cat 🐾</h1>
+  <img src="%s" alt="Random Cat" style="max-width: 100%%; border-radius: 12px;" />
+  <p><a href="/">Next Cat</a></p>
 </body>
 </html>`, imageURL, imageURL)
 
@@ -156,91 +79,6 @@ func main() {
 		c.Set("Content-Disposition", "inline; filename="+filename)
 
 		return c.SendFile(imagePath)
-	})
-
-	app.Get("/settings", func(c *fiber.Ctx) error {
-		html := `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Cat Settings</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background-color: #f7f7f7;
-      color: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      padding: 2rem;
-      margin: 0;
-    }
-    .settings-container {
-      background-color: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      padding: 1.5rem;
-      width: 300px;
-      text-align: center;
-    }
-    .button {
-      background-color: #6366f1;
-      color: white;
-      padding: 0.8rem 1.2rem;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 1rem;
-      font-size: 1rem;
-    }
-    .toggle {
-      margin: 1rem 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="settings-container">
-    <h2>Cat Settings</h2>
-    <div class="toggle">
-      <label>Enable Confetti</label>
-      <input type="checkbox" id="confetti-toggle" />
-    </div>
-    <div class="toggle">
-      <label>Enable Keyboard Shortcuts</label>
-      <input type="checkbox" id="keyboard-toggle" />
-    </div>
-    <div class="toggle">
-      <label>Enable Dark Mode</label>
-      <input type="checkbox" id="darkmode-toggle" checked />
-    </div>
-    <button class="button" onclick="saveSettings()">Save Settings</button>
-  </div>
-
-  <!-- Include the confetti.js script -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti"></script>
-
-  <script>
-    // Check localStorage for user settings
-    document.getElementById("confetti-toggle").checked = localStorage.getItem("confetti") === "true";
-    document.getElementById("keyboard-toggle").checked = localStorage.getItem("keyboardShortcuts") === "true";
-    document.getElementById("darkmode-toggle").checked = localStorage.getItem("darkMode") === "true";
-
-    // Save user settings
-    function saveSettings() {
-      localStorage.setItem("confetti", document.getElementById("confetti-toggle").checked);
-      localStorage.setItem("keyboardShortcuts", document.getElementById("keyboard-toggle").checked);
-      localStorage.setItem("darkMode", document.getElementById("darkmode-toggle").checked);
-
-      alert("Settings saved! Refreshing page...");
-      window.location.reload(); // Reload to apply settings
-    }
-  </script>
-</body>
-</html>`
-
-		c.Set("Content-Type", "text/html")
-		return c.SendString(html)
 	})
 
 	log.Fatal(app.Listen(":3000"))
