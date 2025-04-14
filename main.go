@@ -70,11 +70,39 @@ func main() {
 
 		// Set headers for embeds in social platforms with a cache-busting query
 		c.Set("Content-Type", getContentType(imagePath))
-		c.Set("og:image", c.BaseURL()+"/?filename="+filename+"&t="+time.Now().Format("20060102150405"))
+		timestamp := time.Now().Format("20060102150405")
+		c.Set("og:image", c.BaseURL()+"/image/"+timestamp+"/"+filename)
 		c.Set("og:title", filename)
 		c.Set("og:description", "Random image: "+filename)
 
 		// Return the image file
+		return c.SendFile(imagePath)
+	})
+
+	app.Get("/image/:ts/:filename", func(c *fiber.Ctx) error {
+		filename := c.Params("filename")
+
+		// Same checks as before
+		if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
+		}
+
+		imagePath := filepath.Join(imageDir, filepath.Base(filename))
+		if !strings.HasPrefix(imagePath, imageDir) {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
+		}
+		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+			return c.Status(fiber.StatusNotFound).SendString("Image not found")
+		}
+
+		// Set the same headers
+		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+		c.Set("Pragma", "no-cache")
+		c.Set("Expires", "0")
+		c.Set("Surrogate-Control", "no-store")
+		c.Set("Content-Type", getContentType(imagePath))
+		c.Set("Content-Disposition", "inline; filename="+filepath.Base(filename))
+
 		return c.SendFile(imagePath)
 	})
 
