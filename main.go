@@ -1,82 +1,72 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-const (
-	imageDir = "/mnt/All Disks/Files/cats"
-)
+const imageDir = "/mnt/All Disks/Files/cats"
 
 func main() {
 	app := fiber.New()
-
-	// Initialize random with a time-based seed
 	rand.Seed(time.Now().UnixNano())
 
+	// Root path — generate random slug and redirect
 	app.Get("/", func(c *fiber.Ctx) error {
-		filename := c.Query("filename")
-		var imagePath string
-		var err error
+		slug := strconv.FormatInt(time.Now().UnixNano(), 36) // unique slug like "lqx1uc0puv"
+		return c.Redirect("/view/"+slug, fiber.StatusTemporaryRedirect)
+	})
 
-		if filename == "" {
-			imagePath, err = getRandomImage(imageDir)
-			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).SendString("Error finding image: " + err.Error())
-			}
-			filename = filepath.Base(imagePath)
-		} else {
-			if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
-			}
-			imagePath = filepath.Join(imageDir, filepath.Base(filename))
-			if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-				return c.Status(fiber.StatusNotFound).SendString("Image not found")
-			}
+	// View a random cat (slug is unused, just ensures a fresh URL)
+	app.Get("/view/:slug", func(c *fiber.Ctx) error {
+		imagePath, err := getRandomImage(imageDir)
+		if err != nil {
+			return c.Status(500).SendString("No cat found 😿")
 		}
 
-		// Create a cache-busted image URL
-		imageURL := c.BaseURL() + "/image/" + filename + "?t=" + time.Now().Format("20060102150405")
+		filename := filepath.Base(imagePath)
+		imageURL := c.BaseURL() + "/image/" + filename + "?t=" + strconv.FormatInt(time.Now().Unix(), 10)
 
-		// HTML page with Open Graph tags
-		html := `<!DOCTYPE html>
+		html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Random Cat</title>
-  <meta property="og:title" content="Random Cat: ` + filename + `" />
-  <meta property="og:description" content="Another cute cat picture 🐱" />
-  <meta property="og:image" content="` + imageURL + `" />
-  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Random Cat!" />
+  <meta property="og:description" content="Here’s a cat just for you 🐱" />
+  <meta property="og:image" content="%s" />
   <meta property="twitter:card" content="summary_large_image" />
+  <title>Random Cat</title>
 </head>
 <body>
-  <img src="` + imageURL + `" alt="Cat Image" style="max-width: 100%; height: auto;" />
+  <h1>Random Cat 🐾</h1>
+  <img src="%s" alt="Random Cat" style="max-width: 100%%; border-radius: 12px;" />
+  <p><a href="/">Next Cat</a></p>
 </body>
-</html>`
+</html>`, imageURL, imageURL)
 
-		// Prevent caching of the preview page
+		c.Set("Cache-Control", "no-store")
 		c.Set("Content-Type", "text/html")
-		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-		c.Set("Pragma", "no-cache")
-		c.Set("Expires", "0")
-		c.Set("Surrogate-Control", "no-store")
 
 		return c.SendString(html)
 	})
 
+	// Serve specific image files
 	app.Get("/image/:filename", func(c *fiber.Ctx) error {
 		filename := c.Params("filename")
-		imagePath := filepath.Join(imageDir, filepath.Base(filename))
+		if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
+		}
 
+		imagePath := filepath.Join(imageDir, filepath.Base(filename))
 		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
 			return c.Status(fiber.StatusNotFound).SendString("Image not found")
 		}
@@ -87,33 +77,6 @@ func main() {
 		c.Set("Surrogate-Control", "no-store")
 		c.Set("Content-Type", getContentType(imagePath))
 		c.Set("Content-Disposition", "inline; filename="+filename)
-
-		return c.SendFile(imagePath)
-	})
-
-	app.Get("/image/:ts/:filename", func(c *fiber.Ctx) error {
-		filename := c.Params("filename")
-
-		// Same checks as before
-		if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
-		}
-
-		imagePath := filepath.Join(imageDir, filepath.Base(filename))
-		if !strings.HasPrefix(imagePath, imageDir) {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
-		}
-		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-			return c.Status(fiber.StatusNotFound).SendString("Image not found")
-		}
-
-		// Set the same headers
-		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-		c.Set("Pragma", "no-cache")
-		c.Set("Expires", "0")
-		c.Set("Surrogate-Control", "no-store")
-		c.Set("Content-Type", getContentType(imagePath))
-		c.Set("Content-Disposition", "inline; filename="+filepath.Base(filename))
 
 		return c.SendFile(imagePath)
 	})
@@ -146,7 +109,7 @@ func getRandomImage(dir string) (string, error) {
 }
 
 func isImageFile(path string) bool {
-	ext := filepath.Ext(path)
+	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
 	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp":
 		return true
@@ -156,7 +119,7 @@ func isImageFile(path string) bool {
 }
 
 func getContentType(path string) string {
-	ext := filepath.Ext(path)
+	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
 	case ".jpg", ".jpeg":
 		return "image/jpeg"
