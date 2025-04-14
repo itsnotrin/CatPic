@@ -50,14 +50,13 @@ func main() {
   <style>
     body {
       font-family: system-ui, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
       display: flex;
       justify-content: center;
       align-items: center;
       flex-direction: column;
       padding: 2rem;
       margin: 0;
+      transition: background-color 0.3s, color 0.3s;
     }
     .card {
       background: #1e1e1e;
@@ -95,6 +94,16 @@ func main() {
       background-color: #f7f7f7;
       color: #333;
     }
+    .mode-toggle {
+      margin-top: 1rem;
+      background: #ffcc00;
+      color: black;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="dark">
@@ -104,6 +113,7 @@ func main() {
     <form method="GET" action="/">
       <button class="button">New Cat</button>
     </form>
+    <button class="mode-toggle" onclick="toggleMode()">Toggle Dark/Light Mode</button>
   </div>
 
   <!-- Include confetti.js script -->
@@ -118,8 +128,10 @@ func main() {
     // Apply Dark Mode
     if (darkModeEnabled) {
       document.body.classList.add('dark');
+      document.body.classList.remove('light');
     } else {
       document.body.classList.add('light');
+      document.body.classList.remove('dark');
     }
 
     // Enable confetti if turned on in settings
@@ -148,6 +160,21 @@ func main() {
       });
     }
 
+    // Toggle between Dark and Light Mode
+    function toggleMode() {
+      const currentMode = document.body.classList.contains('dark');
+      if (currentMode) {
+        // Switch to Light Mode
+        document.body.classList.remove('dark');
+        document.body.classList.add('light');
+        localStorage.setItem("darkMode", "false");
+      } else {
+        // Switch to Dark Mode
+        document.body.classList.remove('light');
+        document.body.classList.add('dark');
+        localStorage.setItem("darkMode", "true");
+      }
+    }
   </script>
 </body>
 </html>`, imageURL, imageURL)
