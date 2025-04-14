@@ -28,7 +28,6 @@ func main() {
 
 	// View a random cat (slug is unused, just ensures a fresh URL)
 	app.Get("/view/:slug", func(c *fiber.Ctx) error {
-		// Get the random image
 		imagePath, err := getRandomImage(imageDir)
 		if err != nil {
 			return c.Status(500).SendString("No cat found 😿")
@@ -37,7 +36,7 @@ func main() {
 		filename := filepath.Base(imagePath)
 		imageURL := c.BaseURL() + "/image/" + filename + "?t=" + strconv.FormatInt(time.Now().Unix(), 10)
 
-		// Get the user's settings from localStorage
+		// Fetch user settings (simulated via JS in the frontend)
 		html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,7 +68,7 @@ func main() {
       border: 1px solid #333;
     }
     .card img {
-      max-width: 100%;
+      max-width: 100%%;
       border-radius: 8px;
     }
     .button {
@@ -87,17 +86,9 @@ func main() {
     .button:hover {
       background: #4f46e5;
     }
-    body.dark {
-      background-color: #121212;
-      color: #ffffff;
-    }
-    body.light {
-      background-color: #f7f7f7;
-      color: #333;
-    }
   </style>
 </head>
-<body class="dark">
+<body>
   <div class="card">
     <h2>Random Cat 🐱</h2>
     <img src="%s" alt="A random cat" />
@@ -106,54 +97,42 @@ func main() {
     </form>
   </div>
 
-  <!-- Include confetti.js script -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti"></script>
-
   <script>
-    // Get settings from localStorage
+    // Get user preferences from localStorage
     const confettiEnabled = localStorage.getItem("confetti") === "true";
     const keyboardShortcutsEnabled = localStorage.getItem("keyboardShortcuts") === "true";
     const darkModeEnabled = localStorage.getItem("darkMode") === "true";
 
-    // Apply Dark Mode
-    if (darkModeEnabled) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.add('light');
-    }
-
-    // Enable confetti if turned on in settings
     if (confettiEnabled) {
-      document.addEventListener("DOMContentLoaded", function () {
-        launchConfetti();
-      });
+    	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+      if (confettiEnabled) {
+        confetti({ particleCount: 100, spread: 70, origin: { x: 0.5, y: 0.5 } });
+      }
+    </script>
     }
 
-    // Keyboard Shortcuts (Enable 'N' to trigger New Cat)
     if (keyboardShortcutsEnabled) {
-      document.addEventListener('keydown', function (e) {
+      document.addEventListener('keydown', function(e) {
         if (e.key === 'n' || e.key === 'N') {
-          window.location.reload(); // Reload the page to show a new cat
+          location.reload(); // Load a new cat on 'n' key press
         }
       });
     }
 
-    // Function to trigger confetti animation
-    function launchConfetti() {
-      const confetti = window.confetti;
-      confetti({
-        particleCount: 200,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+    // Toggle Dark Mode
+    if (!darkModeEnabled) {
+      document.body.style.backgroundColor = '#f7f7f7';
+      document.body.style.color = '#333';
+      document.querySelector('.card').style.backgroundColor = '#ffffff';
     }
-
   </script>
 </body>
 </html>`, imageURL, imageURL)
 
 		c.Set("Cache-Control", "no-store")
 		c.Set("Content-Type", "text/html")
+
 		return c.SendString(html)
 	})
 
