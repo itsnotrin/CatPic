@@ -24,58 +24,70 @@ func main() {
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		filename := c.Query("filename")
-
 		var imagePath string
 		var err error
 
 		if filename == "" {
-			// Get a random image
 			imagePath, err = getRandomImage(imageDir)
 			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).SendString("Error finding images: " + err.Error())
+				return c.Status(fiber.StatusInternalServerError).SendString("Error finding image: " + err.Error())
 			}
+			filename = filepath.Base(imagePath)
 		} else {
-			// Prevent directory traversal by checking for suspicious characters
 			if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
 			}
-
-			// Only use basename to prevent any path manipulation
-			cleanFilename := filepath.Base(filename)
-
-			// Get specific image by filename
-			imagePath = filepath.Join(imageDir, cleanFilename)
-
-			// Verify the resulting path is still within the imageDir
-			if !strings.HasPrefix(imagePath, imageDir) {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid filename")
-			}
-
+			imagePath = filepath.Join(imageDir, filepath.Base(filename))
 			if _, err := os.Stat(imagePath); os.IsNotExist(err) {
 				return c.Status(fiber.StatusNotFound).SendString("Image not found")
 			}
 		}
 
-		// Get just the filename part for the response
-		filename = filepath.Base(imagePath)
+		// Create a cache-busted image URL
+		imageURL := c.BaseURL() + "/image/" + filename + "?t=" + time.Now().Format("20060102150405")
 
-		// Set content disposition for downloads
-		c.Set("Content-Disposition", "inline; filename="+filename)
+		// HTML page with Open Graph tags
+		html := `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Random Cat</title>
+  <meta property="og:title" content="Random Cat: ` + filename + `" />
+  <meta property="og:description" content="Another cute cat picture 🐱" />
+  <meta property="og:image" content="` + imageURL + `" />
+  <meta property="og:type" content="website" />
+  <meta property="twitter:card" content="summary_large_image" />
+</head>
+<body>
+  <img src="` + imageURL + `" alt="Cat Image" style="max-width: 100%; height: auto;" />
+</body>
+</html>`
 
-		// Prevent caching by clients and proxies (like Cloudflare)
+		// Prevent caching of the preview page
+		c.Set("Content-Type", "text/html")
 		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
 		c.Set("Pragma", "no-cache")
 		c.Set("Expires", "0")
 		c.Set("Surrogate-Control", "no-store")
 
-		// Set headers for embeds in social platforms with a cache-busting query
-		c.Set("Content-Type", getContentType(imagePath))
-		timestamp := time.Now().Format("20060102150405")
-		c.Set("og:image", c.BaseURL()+"/image/"+timestamp+"/"+filename)
-		c.Set("og:title", filename)
-		c.Set("og:description", "Random image: "+filename)
+		return c.SendString(html)
+	})
 
-		// Return the image file
+	app.Get("/image/:filename", func(c *fiber.Ctx) error {
+		filename := c.Params("filename")
+		imagePath := filepath.Join(imageDir, filepath.Base(filename))
+
+		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+			return c.Status(fiber.StatusNotFound).SendString("Image not found")
+		}
+
+		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+		c.Set("Pragma", "no-cache")
+		c.Set("Expires", "0")
+		c.Set("Surrogate-Control", "no-store")
+		c.Set("Content-Type", getContentType(imagePath))
+		c.Set("Content-Disposition", "inline; filename="+filename)
+
 		return c.SendFile(imagePath)
 	})
 
