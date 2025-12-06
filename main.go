@@ -83,6 +83,7 @@ func main() {
   <meta property="og:url" content="%s" />
   <meta property="twitter:card" content="summary_large_image" />
   <title>Random Cat</title>
+  <script defer data-domain="cats.ryanwiecz.co.uk" src="https://analytics.ryanwiecz.co.uk/js/script.js"></script>
 </head>
 <body>
   <h1>Random Cat 🐾</h1>
